@@ -1,0 +1,21 @@
+{% extends "admin/change_form.html" %}
+
+{% block after_related_objects %}
+    <h2>Files</h2>
+    <ul>
+        {% for file in files %}
+            <li>
+                {{ file.title }} - <a href="{{ file.file.url }}">Download</a>
+            </li>
+        {% empty %}
+            <p>No files uploaded.</p>
+        {% endfor %}
+    </ul>
+
+    <h2>Upload New Files</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ upload_form.files }}
+        <button type="submit" class="button">Upload</button>
+    </form>
+{% endblock %}
