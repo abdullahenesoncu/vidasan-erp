@@ -90,23 +90,41 @@ export const goNextStep = (id) => {
     });
 };
 
-export const downloadWorkOrderPDF = (siparisId) => {
+export const downloadWorkOrderExcel = (siparisId) => {
     return axios.get(`${API_URL}/work-order/${siparisId}/`, {
         headers: {
             'Authorization': `Token ${getToken()}`,
         },
         responseType: 'blob' // Set responseType to 'blob' to handle binary data
     }).then(response => {
-        // Create a link element to download the PDF
-        const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+        // Create a link element to download the Excel file
+        const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', 'work_order.pdf'); // Set default file name
+        link.setAttribute('download', 'work_order.xlsx'); // Set default file name
         document.body.appendChild(link);
         link.click();
         link.remove(); // Clean up
         window.URL.revokeObjectURL(url); // Release the object URL
     }).catch(error => {
-        console.error('Error downloading work order PDF:', error);
+        console.error('Error downloading work order Excel:', error);
+    });
+};
+
+// Get SiparisActivity by Siparis ID
+export const getSiparisActivity = (siparisId) => {
+    return axios.get(`${API_URL}/siparis/${siparisId}/activity/`, {
+        headers: {
+            'Authorization': `Token ${getToken()}`
+        }
+    });
+};
+
+// Update SiparisActivity by Siparis ID
+export const updateSiparisActivity = (siparisId, activityData) => {
+    return axios.put(`${API_URL}/siparis/${siparisId}/activity/`, activityData, {
+        headers: {
+            'Authorization': `Token ${getToken()}`
+        }
     });
 };

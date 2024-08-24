@@ -1,20 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { TextField, Button, Container, Typography, Box, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
-import { createSiparis, getNextStep, getSiparis, goNextStep, updateSiparis, listSiparisFiles, createSiparisFile, deleteSiparisFile } from '../actions/siparis';
-import { listKaplama, listIsilIslem, listPatch } from '../actions/vidasan';
+import { TextField, Button, Container, Typography, Box, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
+import { Link } from 'react-router-dom';
+import { createSiparis, getSiparis, updateSiparis, listSiparisFiles, createSiparisFile, deleteSiparisFile, goNextStep, getNextStep } from '../actions/siparis';
+import { KaplamaTypes, QualityTypes, Materials } from '../constants';
 
 const SiparisFormPage = ({ readonly = false }) => {
     const [formData, setFormData] = useState({
+        activityId: null,
         definition: '',
         description: '',
         amount: '',
         isOEM: false,
         isActive: false,
         orderNumber: '',
-        kaplama_id: '',
-        isilIslem_id: '',
-        patch_id: '',
+        clientOrderNumber: '',
+        materialNumber: '',
+        company: '',
+        kaplama: '',
+        quality: '',
+        patch: '',
+        material: '',
         deadline: '',
         state: '',
     });
@@ -23,27 +29,18 @@ const SiparisFormPage = ({ readonly = false }) => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [isUpdate, setIsUpdate] = useState(false);
-    const [kaplamaOptions, setKaplamaOptions] = useState([]);
-    const [isilIslemOptions, setIsilIslemOptions] = useState([]);
-    const [patchOptions, setPatchOptions] = useState([]);
     const [nextStep, setNextStep] = useState(null);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        Promise.all([listKaplama(), listIsilIslem(), listPatch()])
-            .then(([kaplamaRes, isilIslemRes, patchRes]) => {
-                setKaplamaOptions(kaplamaRes.data);
-                setIsilIslemOptions(isilIslemRes.data);
-                setPatchOptions(patchRes.data);
-            })
-            .catch((error) => {
-                console.error('Error fetching options data:', error);
-            });
-
         if (id) {
             listSiparisFiles(id)
-                .then(resp => setSiparisFiles(resp.data));
+                .then(resp => setSiparisFiles(resp.data))
+                .catch(err => console.error('Error fetching files:', err));
+
             getNextStep(id)
-                .then(resp => setNextStep(resp.data.nextStep));
+                .then(resp => setNextStep(resp.data.nextStep))
+                .catch(err => console.error('Error fetching next step:', err));
         }
     }, [id]);
 
@@ -51,22 +48,28 @@ const SiparisFormPage = ({ readonly = false }) => {
         if (id) {
             setIsUpdate(true);
             getSiparis(id)
-                .then((response) => {
+                .then(response => {
                     setFormData({
+                        activityId: response.data.activityId,
                         definition: response.data.definition,
                         description: response.data.description,
                         amount: response.data.amount,
                         isOEM: response.data.isOEM,
                         isActive: response.data.isActive,
-                        orderNumber: response.data.orderNumber,
-                        kaplama_id: response.data.kaplama?.id || '',
-                        isilIslem_id: response.data.isilIslem?.id || '',
-                        patch_id: response.data.patch?.id || '',
+                        orderNumber: response.data.orderNumber || '',
+                        clientOrderNumber: response.data.clientOrderNumber || '',
+                        materialNumber: response.data.materialNumber || '',
+                        company: response.data.company || '',
+                        kaplama: response.data.kaplama || '',
+                        quality: response.data.quality || '',
+                        patch: response.data.patch || '',
+                        material: response.data.material || '',
                         deadline: response.data.deadline ? new Date(response.data.deadline).toISOString().split('T')[0] : '',
                         state: response.data.state || '',
                     });
                 })
-                .catch((error) => {
+                .catch(error => {
+                    console.error('Error fetching Siparis:', error);
                     navigate('/siparis');
                 });
         }
@@ -74,7 +77,7 @@ const SiparisFormPage = ({ readonly = false }) => {
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setFormData((prevState) => ({
+        setFormData(prevState => ({
             ...prevState,
             [name]: type === 'checkbox' ? checked : value,
         }));
@@ -86,50 +89,42 @@ const SiparisFormPage = ({ readonly = false }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (readonly) return;  // Prevent form submission if readonly
+
         const payload = { ...formData };
 
-        if (isUpdate) {
-            updateSiparis(id, payload)
-                .then((response) => {
-                    console.log('Siparis updated:', response.data);
-                    navigate('/siparis');
-                })
-                .catch((error) => {
-                    console.error('Error updating Siparis:', error);
-                });
-        } else {
-            createSiparis(payload)
-                .then((response) => {
-                    navigate(`/siparis/${response.data.id}`);
-                })
-                .catch((error) => {
-                    console.error('Error creating Siparis:', error);
-                });
-        }
+        (isUpdate ? updateSiparis(id, payload) : createSiparis(payload))
+            .then(response => {
+                console.log('Siparis saved:', response.data);
+                navigate('/siparis');
+            })
+            .catch(error => {
+                console.error('Error saving Siparis:', error);
+                setError('An error occurred while saving the data.');
+            });
     };
 
     const handleNextStep = () => {
-        if (nextStep) {
-            if (!window.confirm(`Gerçekten '${nextStep}' istiyor musunuz?`)) return;
-            goNextStep(id)
-                .then(_ => {
-                    window.location.reload();
-                });
-        }
+        if (!nextStep) return;
+
+        if (!window.confirm(`Gerçekten '${nextStep}' istiyor musunuz?`)) return;
+        goNextStep(id)
+            .then(() => window.location.reload())
+            .catch(error => console.error('Error going to next step:', error));
     };
 
     const handleFileUpload = () => {
-        if (!fileData) return;
+        if (readonly || !fileData) return;  // Prevent file upload if readonly
 
         const formData = new FormData();
         formData.append('file', fileData);
-        formData.append('title', fileData.name); // Set the file title to be its name
+        formData.append('title', fileData.name);
 
         createSiparisFile(id, formData)
             .then(response => {
                 console.log('File uploaded:', response.data);
                 setSiparisFiles([...siparisFiles, response.data]);
-                setFileData(null); // Clear file input
+                setFileData(null);
             })
             .catch(error => {
                 console.error('Error uploading file:', error);
@@ -137,6 +132,7 @@ const SiparisFormPage = ({ readonly = false }) => {
     };
 
     const handleFileDelete = (fileId) => {
+        if (readonly) return;  // Prevent file deletion if readonly
         if (!window.confirm('Are you sure you want to delete this file?')) return;
 
         deleteSiparisFile(id, fileId)
@@ -149,17 +145,43 @@ const SiparisFormPage = ({ readonly = false }) => {
             });
     };
 
-    console.log( siparisFiles?.map(file=>file) );
+    const handleFileDownload = (fileUrl, fileName) => {
+        fetch(fileUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/octet-stream',
+            },
+        })
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(error => {
+            console.error('Error downloading file:', error);
+        });
+    };
 
     return (
         <Container>
+            {error && <Typography color="error">{error}</Typography>}
             <Typography variant="h4" gutterBottom>
                 {isUpdate ? (readonly ? 'Sipariş Görüntüleme' : 'Sipariş Düzenleme') : 'Sipariş Oluşturma'}
             </Typography>
+            {formData?.activityId && (
+                <Typography>
+                    <Link to={`/siparis-activity/${formData.activityId}`}>Sipariş Aktivitelerine Git</Link>
+                </Typography>
+            )}
             <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 3 }}>
+                {/* Form fields */}
                 <TextField
                     fullWidth
-                    label="İş Tanımı"
+                    label="Ürün Tanımı"
                     name="definition"
                     value={formData.definition}
                     onChange={handleChange}
@@ -201,6 +223,16 @@ const SiparisFormPage = ({ readonly = false }) => {
                     label="Sipariş Numarası"
                     name="orderNumber"
                     value={formData.orderNumber}
+                    margin="normal"
+                    InputProps={{
+                        readOnly: true,
+                    }}
+                />
+                <TextField
+                    fullWidth
+                    label="Müşteri Sipariş Numarası"
+                    name="clientOrderNumber"
+                    value={formData.clientOrderNumber}
                     onChange={handleChange}
                     margin="normal"
                     InputProps={{
@@ -209,148 +241,151 @@ const SiparisFormPage = ({ readonly = false }) => {
                 />
                 <TextField
                     fullWidth
-                    label="Termin Tarihi"
-                    name="deadline"
-                    value={formData.deadline}
+                    label="Malzeme Numarası"
+                    name="materialNumber"
+                    value={formData.materialNumber}
                     onChange={handleChange}
                     margin="normal"
-                    type="date"
-                    InputLabelProps={{ shrink: true }}
                     InputProps={{
                         readOnly: readonly,
                     }}
                 />
-
+                <TextField
+                    fullWidth
+                    label="Şirket"
+                    name="company"
+                    value={formData.company}
+                    onChange={handleChange}
+                    margin="normal"
+                    InputProps={{
+                        readOnly: readonly,
+                    }}
+                />
                 <FormControl fullWidth margin="normal">
-                    <InputLabel id="kaplama-label">Kaplama</InputLabel>
+                    <InputLabel>Kaplama</InputLabel>
                     <Select
-                        labelId="kaplama-label"
-                        name="kaplama_id"
-                        value={formData.kaplama_id}
+                        name="kaplama"
+                        value={formData.kaplama}
                         onChange={handleChange}
-                        inputProps={{
-                            readOnly: readonly,
-                        }}
+                        disabled={readonly}
+                        label="Kaplama"
                     >
-                        <MenuItem value={null}>Yok</MenuItem>
-                        {kaplamaOptions.map((option) => (
-                            <MenuItem key={option.id} value={option.id}>
-                                {option.name}
+                        {Object.keys(KaplamaTypes).map(key => (
+                            <MenuItem key={key} value={KaplamaTypes[key]}>
+                                {KaplamaTypes[key]}
                             </MenuItem>
                         ))}
                     </Select>
                 </FormControl>
-
                 <FormControl fullWidth margin="normal">
-                    <InputLabel id="isilIslem-label">Isil Islem</InputLabel>
+                    <InputLabel>Kalite</InputLabel>
                     <Select
-                        labelId="isilIslem-label"
-                        name="isilIslem_id"
-                        value={formData.isilIslem_id}
+                        name="quality"
+                        value={formData.quality}
                         onChange={handleChange}
-                        inputProps={{
-                            readOnly: readonly,
-                        }}
+                        disabled={readonly}
+                        label="Kalite"
                     >
-                        <MenuItem value={null}>Yok</MenuItem>
-                        {isilIslemOptions.map((option) => (
-                            <MenuItem key={option.id} value={option.id}>
-                                {option.name}
+                        {Object.keys(QualityTypes).map(key => (
+                            <MenuItem key={key} value={QualityTypes[key]}>
+                                {QualityTypes[key]}
                             </MenuItem>
                         ))}
                     </Select>
                 </FormControl>
-
+                <TextField
+                    fullWidth
+                    label="Patch"
+                    name="patch"
+                    value={formData.patch}
+                    onChange={handleChange}
+                    margin="normal"
+                    InputProps={{
+                        readOnly: readonly,
+                    }}
+                />
                 <FormControl fullWidth margin="normal">
-                    <InputLabel id="patch-label">Patch</InputLabel>
+                    <InputLabel>Malzeme</InputLabel>
                     <Select
-                        labelId="patch-label"
-                        name="patch_id"
-                        value={formData.patch_id}
+                        name="material"
+                        value={formData.material}
                         onChange={handleChange}
-                        inputProps={{
-                            readOnly: readonly,
-                        }}
+                        disabled={readonly}
+                        label="Malzeme"
                     >
-                        <MenuItem value={null}>Yok</MenuItem>
-                        {patchOptions.map((option) => (
-                            <MenuItem key={option.id} value={option.id}>
-                                {option.name}
+                        {Object.keys(Materials).map(key => (
+                            <MenuItem key={key} value={Materials[key]}>
+                                {Materials[key]}
                             </MenuItem>
                         ))}
                     </Select>
                 </FormControl>
-
-                {/* File Upload Section */}
-                {id && (
-                    <Box sx={{ mt: 3 }}>
-                        <input
-                            type="file"
-                            onChange={handleFileChange}
-                            disabled={readonly}
-                        />
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={handleFileUpload}
-                            sx={{ mt: 2 }}
-                            disabled={readonly || !fileData}
-                        >
-                            Upload File
+                <TextField
+                    fullWidth
+                    label="Teslim Tarihi"
+                    name="deadline"
+                    type="date"
+                    value={formData.deadline}
+                    onChange={handleChange}
+                    margin="normal"
+                    InputProps={{
+                        readOnly: readonly,
+                    }}
+                    InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                    fullWidth
+                    label="Durum"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleChange}
+                    margin="normal"
+                    InputProps={{
+                        readOnly: readonly,
+                    }}
+                />
+                <Box sx={{ mt: 2 }}>
+                    {!readonly && (
+                        <Button variant="contained" color="primary" type="submit">
+                            {isUpdate ? 'Güncelle' : 'Oluştur'}
                         </Button>
-
-                        <Typography variant="h6" sx={{ mt: 3 }}>
-                            Uploaded Files:
-                        </Typography>
-                        <ul>
-                            {siparisFiles.map(file => (
-                                <li key={file.id}>
-                                    <a href={file.file} download>
-                                        {file.title}
-                                    </a>
+                    )}
+                    {isUpdate && nextStep && (
+                        <Button variant="contained" color="secondary" onClick={handleNextStep} sx={{ ml: 2 }}>
+                            {nextStep}
+                        </Button>
+                    )}
+                </Box>
+            </Box>
+            <Box sx={{ mt: 3 }}>
+                <input type="file" onChange={handleFileChange} />
+                <Button variant="contained" onClick={handleFileUpload} disabled={!fileData}>
+                    Dosyayı Yükle
+                </Button>
+                {siparisFiles.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                        {siparisFiles.map(file => (
+                            <Box key={file.id} sx={{ mb: 1 }}>
+                                <Typography variant="body2">{file.title}</Typography>
+                                <Button
+                                    variant="text"
+                                    color="primary"
+                                    onClick={() => handleFileDownload(file.fileUrl, file.title)}
+                                >
+                                    İndir
+                                </Button>
+                                { !readonly && (
                                     <Button
-                                        variant="outlined"
+                                        variant="text"
                                         color="error"
                                         onClick={() => handleFileDelete(file.id)}
-                                        sx={{ ml: 2 }}
                                     >
-                                        Delete
+                                        Sil
                                     </Button>
-                                </li>
-                            ))}
-                        </ul>
+                                )}
+                            </Box>
+                        ))}
                     </Box>
-                )}
-
-                {id && (
-                    <TextField
-                        fullWidth
-                        label="Durum"
-                        name="state"
-                        value={formData.state}
-                        margin="normal"
-                        InputProps={{
-                            readOnly: true,
-                        }}
-                    />
-                )}
-
-                {(
-                    <>
-                        <Button type="submit" variant="contained" color="primary" sx={{ mt: 3 }}>
-                            {isUpdate ? 'Değişiklikleri Kaydet' : 'Sipariş Oluştur'}
-                        </Button>
-                        {nextStep && (
-                            <Button
-                                variant="contained"
-                                color="secondary"
-                                onClick={() => handleNextStep()}
-                                sx={{ mt: 2, ml: 2 }}
-                            >
-                                {nextStep}
-                            </Button>
-                        )}
-                    </>
                 )}
             </Box>
         </Container>

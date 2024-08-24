@@ -3,7 +3,7 @@ import {
     Container, Typography, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
     Checkbox, IconButton, Paper, Box, Pagination, Stack, Button
 } from '@mui/material';
-import { listSiparis, deleteSiparis, downloadWorkOrderPDF } from '../actions/siparis';
+import { listSiparis, deleteSiparis, downloadWorkOrderExcel } from '../actions/siparis';
 import { ArrowUpward, ArrowDownward, Add, Edit, Download } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -109,7 +109,7 @@ const SiparisListPage = () => {
 
     // Handle download work order PDF
     const handleDownload = (id) => {
-        downloadWorkOrderPDF(id);
+        downloadWorkOrderExcel(id);
     };
 
     return (
@@ -196,7 +196,7 @@ const SiparisListPage = () => {
                     </TableHead>
                     <TableBody>
                         {siparisList.map((siparis) => (
-                            <TableRow key={siparis.id} hover onClick={() => handleRowClick(siparis.id)}>
+                            <TableRow key={siparis.id} hover>
                                 <TableCell>
                                     <Checkbox
                                         checked={selectedSiparisler.includes(siparis.id)}
