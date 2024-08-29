@@ -15,10 +15,13 @@ const styles = {
 
 const MachinePage = () => {
     const [machines, setMachines] = useState([]);
+    const [filteredMachines, setFilteredMachines] = useState([]);
     const [selectedMachine, setSelectedMachine] = useState(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [dialogType, setDialogType] = useState('create');
     const [formData, setFormData] = useState({ name: '', type: '', variation: '' });
+    const [filterType, setFilterType] = useState(''); // For filtering by type
+    const [filterVariation, setFilterVariation] = useState(''); // For filtering by variation
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -33,6 +36,10 @@ const MachinePage = () => {
             fetchMachine(id);
         }
     }, [id, sortField, sortDirection]);
+
+    useEffect(() => {
+        filterMachines();
+    }, [machines, filterType, filterVariation]);
 
     const fetchMachines = async () => {
         try {
@@ -61,9 +68,25 @@ const MachinePage = () => {
         }
     };
 
+    const filterMachines = () => {
+        const filtered = machines.filter(machine => {
+            return (
+                (filterType ? machine.type === filterType : true) &&
+                (filterVariation ? machine.variation === filterVariation : true)
+            );
+        });
+        setFilteredMachines(filtered);
+    };
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
+    };
+
+    const handleFilterChange = (e) => {
+        const { name, value } = e.target;
+        if (name === 'filterType') setFilterType(value);
+        if (name === 'filterVariation') setFilterVariation(value);
     };
 
     const handleOpenDialog = (type, machine = null) => {
@@ -135,6 +158,35 @@ const MachinePage = () => {
             {success && <Alert severity="success">{success}</Alert>}
 
             <Box sx={{ mb: 3 }}>
+                <FormControl sx={styles.formControl}>
+                    <InputLabel>Filter by Type</InputLabel>
+                    <Select
+                        name="filterType"
+                        value={filterType}
+                        onChange={handleFilterChange}
+                    >
+                        <MenuItem value="">All</MenuItem>
+                        {Object.entries(MachineType).map(([key, value]) => (
+                            <MenuItem key={value} value={value}>{key}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+                <FormControl sx={styles.formControl} style={{ marginLeft: '20px' }}>
+                    <InputLabel>Filter by Variation</InputLabel>
+                    <Select
+                        name="filterVariation"
+                        value={filterVariation}
+                        onChange={handleFilterChange}
+                    >
+                        <MenuItem value="">All</MenuItem>
+                        {Object.entries(MachineVariation).map(([key, value]) => (
+                            <MenuItem key={value} value={value}>{key}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+            </Box>
+
+            <Box sx={{ mb: 3 }}>
                 <Button variant="contained" color="primary" onClick={() => handleOpenDialog('create')}>
                     Add New Machine
                 </Button>
@@ -157,7 +209,7 @@ const MachinePage = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {machines.map(machine => (
+                        {filteredMachines.map(machine => (
                             <TableRow key={machine.id}>
                                 <TableCell>{machine.name}</TableCell>
                                 <TableCell>{machine.type}</TableCell>

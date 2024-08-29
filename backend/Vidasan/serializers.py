@@ -1,20 +1,6 @@
 from rest_framework import serializers
 from .models import *
-
-class IsilIslemTypeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = IsilIslemType
-        fields = ['id', 'name']
-
-class KaplamaTypeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = KaplamaType
-        fields = ['id', 'name']
-
-class PatchTypeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PatchType
-        fields = ['id', 'name']
+from Authentication.serializers import UserSerializerPublic
 
 class SiparisFileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,20 +14,12 @@ class SiparisFileReadOnlySerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 class SiparisSerializer(serializers.ModelSerializer):
-    isilIslem = IsilIslemTypeSerializer(read_only=True)
-    kaplama = KaplamaTypeSerializer(read_only=True)
-    patch = PatchTypeSerializer(read_only=True)
-    
-    # Allow kaplama, isilIslem, and patch to be writable via their ID
-    kaplama_id = serializers.PrimaryKeyRelatedField(
-        queryset=KaplamaType.objects.all(), source='kaplama', write_only=True, required=False, allow_null=True
-    )
-    isilIslem_id = serializers.PrimaryKeyRelatedField(
-        queryset=IsilIslemType.objects.all(), source='isilIslem', write_only=True, required=False, allow_null=True
-    )
-    patch_id = serializers.PrimaryKeyRelatedField(
-        queryset=PatchType.objects.all(), source='patch', write_only=True, required=False, allow_null=True
-    )
+    activityId = serializers.SerializerMethodField()
+
+    def get_activityId(self, obj):
+        if hasattr(obj, 'activity'):
+            return obj.activity.id
+        return None
 
     class Meta:
         model = Siparis
@@ -53,23 +31,34 @@ class SiparisSerializer(serializers.ModelSerializer):
             'isOEM',
             'isActive',
             'orderNumber',
-            'state',
-            'isilIslem',
-            'isilIslem_id',  # Writable field
+            'clientOrderNumber',
+            'materialNumber',
+            'company',
+            'quality',
             'kaplama',
-            'kaplama_id',  # Writable field
             'patch',
-            'patch_id',  # Writable field
+            'material',
             'created_at',
             'deadline',
+            'orderDate',
+            'activityId',
+            'pressState',
+            'byckState',
+            'ovalamaState',
+            'sementasyonState',
+            'kaplamaState',
+            'ambalajState',
+            'state',
         ]
-        read_only_fields = ['state']
-
+        read_only_fields = ['orderNumber', 'state']
 
 class SiparisReadOnlySerializer(serializers.ModelSerializer):
-    isilIslem = IsilIslemTypeSerializer(read_only=True)
-    kaplama = KaplamaTypeSerializer(read_only=True)
-    patch = PatchTypeSerializer(read_only=True)
+    activityId = serializers.SerializerMethodField()
+
+    def get_activityId(self, obj):
+        if hasattr(obj, 'activity'):
+            return obj.activity.id
+        return None
 
     class Meta:
         model = Siparis
@@ -79,12 +68,68 @@ class SiparisReadOnlySerializer(serializers.ModelSerializer):
             'description',
             'amount',
             'isOEM',
+            'isActive',
             'orderNumber',
-            'state',
-            'isilIslem',
+            'clientOrderNumber',
+            'materialNumber',
+            'company',
+            'quality',
             'kaplama',
             'patch',
+            'material',
             'created_at',
             'deadline',
+            'orderDate',
+            'activityId',
+            'pressState',
+            'byckState',
+            'ovalamaState',
+            'sementasyonState',
+            'kaplamaState',
+            'ambalajState',
+            'state',
         ]
         read_only_fields = fields
+
+class MachineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Machine
+        fields = ['id', 'name', 'type', 'variation']
+
+class MachineReadOnlySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Machine
+        fields = ['id', 'name', 'type', 'variation']
+
+class SiparisActivitySerializer(serializers.ModelSerializer):
+    siparis = serializers.SerializerMethodField()
+    pressMachine = serializers.PrimaryKeyRelatedField(queryset=Machine.objects.all(), required=False, allow_null=True)
+    pressOperator = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
+    byckMachine = serializers.PrimaryKeyRelatedField(queryset=Machine.objects.all(), required=False, allow_null=True)
+    byckOperator = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
+    ovalamaMachine = serializers.PrimaryKeyRelatedField(queryset=Machine.objects.all(), required=False, allow_null=True)
+    ovalamaOperator = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
+    sementasyonMachine = serializers.PrimaryKeyRelatedField(queryset=Machine.objects.all(), required=False, allow_null=True)
+    sementasyonOperator = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
+    kaplamaMachine = serializers.PrimaryKeyRelatedField(queryset=Machine.objects.all(), required=False, allow_null=True)
+    kaplamaOperator = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
+    ambalajMachine = serializers.PrimaryKeyRelatedField(queryset=Machine.objects.all(), required=False, allow_null=True)
+    ambalajOperator = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
+
+    class Meta:
+        model = SiparisActivity
+        fields = [
+            'siparis',
+            'pressMachine', 'pressAmount', 'pressOutputKg', 'pressWastageKg', 'pressStartDateTime', 'pressFinishDateTime', 'pressOperator',
+            'byckMachine', 'byckAmount', 'byckOutputKg', 'byckWastageKg', 'byckStartDateTime', 'byckFinishDateTime', 'byckOperator',
+            'ovalamaMachine', 'ovalamaAmount', 'ovalamaOutputKg', 'ovalamaWastageKg', 'ovalamaStartDateTime', 'ovalamaFinishDateTime', 'ovalamaOperator',
+            'sementasyonMachine', 'sementasyonAmount', 'sementasyonOutputKg', 'sementasyonWastageKg', 'sementasyonStartDateTime', 'sementasyonFinishDateTime', 'sementasyonOperator',
+            'kaplamaMachine', 'kaplamaAmount', 'kaplamaOutputKg', 'kaplamaWastageKg', 'kaplamaStartDateTime', 'kaplamaFinishDateTime', 'kaplamaOperator',
+            'ambalajMachine', 'ambalajAmount', 'ambalajOutputKg', 'ambalajWastageKg', 'ambalajStartDateTime', 'ambalajFinishDateTime', 'ambalajOperator'
+        ]
+
+    def get_siparis(self, obj):
+        return {
+            'id': obj.siparis.id,
+            'definition': obj.siparis.definition
+        }

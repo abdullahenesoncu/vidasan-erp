@@ -48,6 +48,46 @@ const App = () => {
                     path="/siparis" 
                     element={<PrivateRoute allowedRoles={[UserType.ADMIN, UserType.PLANLAMA, UserType.SATIS_PAZARLAMA, UserType.KALITE_KONTROL, UserType.DEPO]} element={<SiparisListPage />} />} 
                 />
+
+                <Route 
+                    path="/siparis-press" 
+                    element={<PrivateRoute allowedRoles={[UserType.ADMIN, UserType.PLANLAMA]} element={<SiparisListPage process="press" />} />} 
+                />
+
+                <Route 
+                    path="/siparis-byck" 
+                    element={<PrivateRoute allowedRoles={[UserType.ADMIN, UserType.PLANLAMA]} element={<SiparisListPage process="byck" />} />} 
+                />
+
+                <Route 
+                    path="/siparis-ovalama" 
+                    element={<PrivateRoute allowedRoles={[UserType.ADMIN, UserType.PLANLAMA]} element={<SiparisListPage process="ovalama" />} />} 
+                />
+
+                <Route 
+                    path="/siparis-sementasyon" 
+                    element={<PrivateRoute allowedRoles={[UserType.ADMIN, UserType.PLANLAMA]} element={<SiparisListPage process="sementasyon" />} />} 
+                />
+
+                <Route 
+                    path="/siparis-kaplama" 
+                    element={<PrivateRoute allowedRoles={[UserType.ADMIN, UserType.PLANLAMA]} element={<SiparisListPage process="kaplama" />} />} 
+                />
+
+                <Route 
+                    path="/siparis-ambalaj" 
+                    element={<PrivateRoute allowedRoles={[UserType.ADMIN, UserType.PLANLAMA]} element={<SiparisListPage process="ambalaj" />} />} 
+                />
+
+                <Route 
+                    path="/siparis-upcoming" 
+                    element={<PrivateRoute allowedRoles={[UserType.ADMIN, UserType.PLANLAMA]} element={<SiparisListPage onlyUpcomingOrders={true} />} />} 
+                />
+
+                <Route 
+                    path="/siparis-completed" 
+                    element={<PrivateRoute allowedRoles={[UserType.ADMIN, UserType.PLANLAMA]} element={<SiparisListPage onlyCompletedOrders={true} />} />} 
+                />
                 
                 <Route 
                     path="/siparis/create" 

@@ -9,20 +9,21 @@ export const UserType = {
 export const MachineType = {
     PRESS: 'press',
     OVALAMA: 'ovalama',
+    KAPLAMA: 'kaplama',
 };
 
 export const MachineVariation = {
-    TYPE1: 'type1',
-    TYPE2: 'type2',
+    CH3: 'CH3',
+    CH5: 'CH5',
+    CH5S: 'CH5S',
+    CH5L: 'CH5L',
+    CH6: 'CH6',
+    KAPLAMA_TEDARIKCISI: 'Kaplama Tedarikcisi',
 };
 
 export const SiparisState = {
     PLANLAMA: 'Planlama',
-    PRESS: 'Press',
-    OVALAMA: 'Ovalama',
-    ISIL_ISLEM: 'Isıl İşlem',
-    KAPLAMA: 'Kaplama',
-    PATCH: 'Patch',
+    IMALAT: 'İmalat',
     SIPARIS_TAMAMLANDI: 'Sipariş Tamamlandı'
 };
 
@@ -54,3 +55,17 @@ export const KaplamaTypes = {
     GEOMET_PLATING: "Geomet Kaplama",
     YELLOW_PLATING: "Sarı Kaplama"
 };
+
+export const ProcessState = {
+    BASLAMADI: 'Başlamadı',
+    CALISIYOR: 'Çalışıyor',
+    BEKLEMEDE: 'Beklemede',
+    BITTI: 'Bitti',
+};
+
+export const ProcessTransitions = {
+    'Başlamadı': [ ProcessState.BASLAMADI, ProcessState.CALISIYOR ],
+    'Çalışıyor': [ ProcessState.CALISIYOR, ProcessState.BEKLEMEDE, ProcessState.BITTI ],
+    'Beklemede': [ ProcessState.BEKLEMEDE, ProcessState.CALISIYOR, ProcessState.BITTI ],
+    'Bitti': [ ProcessState.BITTI ],
+}

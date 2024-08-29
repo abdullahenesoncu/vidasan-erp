@@ -7,10 +7,17 @@ const API_URL = process.env.REACT_APP_API_URL + '/api/vidasan';
 const getToken = () => localStorage.getItem('token');
 
 // API actions for Siparis
-export const listSiparis = () => {
+export const listSiparis = (page = 1, searchTerm = '', sortField = '', sortOrder = '', onlyUpcomingOrders = false, onlyCompletedOrders = false) => {
     return axios.get(`${API_URL}/siparis/`, {
         headers: {
             'Authorization': `Token ${getToken()}`
+        },
+        params: {
+            page,
+            search: searchTerm,
+            ordering: `${sortOrder === 'desc' ? '-' : ''}${sortField}`,
+            onlyUpcomingOrders: onlyUpcomingOrders,
+            onlyCompletedOrders: onlyCompletedOrders,
         }
     });
 };

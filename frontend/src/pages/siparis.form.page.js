@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { TextField, Button, Container, Typography, Box, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { createSiparis, getSiparis, updateSiparis, listSiparisFiles, createSiparisFile, deleteSiparisFile, goNextStep, getNextStep } from '../actions/siparis';
-import { KaplamaTypes, QualityTypes, Materials } from '../constants';
+import { KaplamaTypes, QualityTypes, Materials, ProcessTransitions } from '../constants';
 
 const SiparisFormPage = ({ readonly = false }) => {
     const [formData, setFormData] = useState({
@@ -22,7 +22,14 @@ const SiparisFormPage = ({ readonly = false }) => {
         patch: '',
         material: '',
         deadline: '',
+        orderDate: '',
         state: '',
+        pressState: '',
+        byckState: '',
+        ovalamaState: '',
+        sementasyonState: '',
+        kaplamaState: '',
+        ambalajState: '',
     });
     const [fileData, setFileData] = useState(null);
     const [siparisFiles, setSiparisFiles] = useState([]);
@@ -31,6 +38,12 @@ const SiparisFormPage = ({ readonly = false }) => {
     const [isUpdate, setIsUpdate] = useState(false);
     const [nextStep, setNextStep] = useState(null);
     const [error, setError] = useState(null);
+    const [pressState, setPressState] = useState( null );
+    const [byckState, setByckState] = useState( null );
+    const [ovalamaState, setOvalamaState] = useState( null );
+    const [sementasyonState, setSementasyonState] = useState( null );
+    const [kaplamaState, setKaplamaState] = useState( null );
+    const [ambalajState, setAmbalajState] = useState( null );
 
     useEffect(() => {
         if (id) {
@@ -65,8 +78,21 @@ const SiparisFormPage = ({ readonly = false }) => {
                         patch: response.data.patch || '',
                         material: response.data.material || '',
                         deadline: response.data.deadline ? new Date(response.data.deadline).toISOString().split('T')[0] : '',
+                        orderDate: response.data.orderDate ? new Date(response.data.orderDate).toISOString().split('T')[0] : '',
                         state: response.data.state || '',
+                        pressState: response.data.pressState,
+                        byckState: response.data.byckState,
+                        ovalamaState: response.data.ovalamaState,
+                        sementasyonState: response.data.sementasyonState,
+                        kaplamaState: response.data.kaplamaState,
+                        ambalajState: response.data.ambalajState,
                     });
+                    setPressState( response.data.pressState );
+                    setByckState( response.data.byckState );
+                    setOvalamaState( response.data.ovalamaState );
+                    setSementasyonState( response.data.sementasyonState );
+                    setKaplamaState( response.data.kaplamaState );
+                    setAmbalajState( response.data.ambalajState );
                 })
                 .catch(error => {
                     console.error('Error fetching Siparis:', error);
@@ -90,9 +116,26 @@ const SiparisFormPage = ({ readonly = false }) => {
     const handleSubmit = (e) => {
         e.preventDefault();
         if (readonly) return;  // Prevent form submission if readonly
-
+    
+        // Validate required fields
+        const requiredFields = {
+            definition: 'Ürün Tanımı',
+            description: 'Açıklama',
+            amount: 'Adet',
+            orderDate: 'Sipariş Tarihi',
+            deadline: 'Teslim Tarihi'
+        };
+    
+        const missingFields = Object.keys(requiredFields).filter(field => !formData[field]);
+    
+        if (missingFields.length > 0) {
+            const missingLabels = missingFields.map(field => requiredFields[field]).join(', ');
+            window.confirm(`Lütfen aşağıdaki gerekli alanları doldurun: ${missingLabels}.`);
+            return;
+        }
+    
         const payload = { ...formData };
-
+    
         (isUpdate ? updateSiparis(id, payload) : createSiparis(payload))
             .then(response => {
                 console.log('Siparis saved:', response.data);
@@ -100,9 +143,11 @@ const SiparisFormPage = ({ readonly = false }) => {
             })
             .catch(error => {
                 console.error('Error saving Siparis:', error);
-                setError('An error occurred while saving the data.');
+                setError('Bir hata oluştu, lütfen tekrar deneyin.');
             });
     };
+    
+    
 
     const handleNextStep = () => {
         if (!nextStep) return;
@@ -177,7 +222,7 @@ const SiparisFormPage = ({ readonly = false }) => {
                     <Link to={`/siparis-activity/${formData.activityId}`}>Sipariş Aktivitelerine Git</Link>
                 </Typography>
             )}
-            <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 3 }}>
+            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
                 {/* Form fields */}
                 <TextField
                     fullWidth
@@ -312,6 +357,7 @@ const SiparisFormPage = ({ readonly = false }) => {
                         onChange={handleChange}
                         disabled={readonly}
                         label="Malzeme"
+                        required
                     >
                         {Object.keys(Materials).map(key => (
                             <MenuItem key={key} value={Materials[key]}>
@@ -320,6 +366,20 @@ const SiparisFormPage = ({ readonly = false }) => {
                         ))}
                     </Select>
                 </FormControl>
+                <TextField
+                    fullWidth
+                    label="Sipariş Tarihi"
+                    name="orderDate"
+                    type="date"
+                    value={formData.orderDate}
+                    onChange={handleChange}
+                    margin="normal"
+                    InputProps={{
+                        readOnly: readonly,
+                    }}
+                    required
+                    InputLabelProps={{ shrink: true }}
+                />
                 <TextField
                     fullWidth
                     label="Teslim Tarihi"
@@ -331,6 +391,7 @@ const SiparisFormPage = ({ readonly = false }) => {
                     InputProps={{
                         readOnly: readonly,
                     }}
+                    required
                     InputLabelProps={{ shrink: true }}
                 />
                 <TextField
@@ -344,6 +405,98 @@ const SiparisFormPage = ({ readonly = false }) => {
                         readOnly: readonly,
                     }}
                 />
+                <Box sx={{ mt: 2 }} style={{display: 'flex', flexDirection: 'row'}}>
+                    <FormControl fullWidth margin="normal">
+                        <InputLabel>Press Durumu</InputLabel>
+                        <Select
+                            name="pressState"
+                            value={formData.pressState}
+                            label="Press Durumu"
+                            onChange={handleChange}
+                        >
+                            {ProcessTransitions[ pressState ]?.map(key => (
+                                <MenuItem key={key} value={key}>
+                                    {key}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                    <FormControl fullWidth margin="normal">
+                        <InputLabel>Byck Durumu</InputLabel>
+                        <Select
+                            name="byckState"
+                            value={formData.byckState}
+                            label="Byck Durumu"
+                            onChange={handleChange}
+                        >
+                            {ProcessTransitions[ byckState ]?.map(key => (
+                                <MenuItem key={key} value={key}>
+                                    {key}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                    <FormControl fullWidth margin="normal">
+                        <InputLabel>Ovalama Durumu</InputLabel>
+                        <Select
+                            name="ovalamaState"
+                            value={formData.ovalamaState}
+                            label="Ovalama Durumu"
+                            onChange={handleChange}
+                        >
+                            {ProcessTransitions[ ovalamaState ]?.map(key => (
+                                <MenuItem key={key} value={key}>
+                                    {key}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                    <FormControl fullWidth margin="normal">
+                        <InputLabel>Sementasyon Durumu</InputLabel>
+                        <Select
+                            name="sementasyonState"
+                            value={formData.sementasyonState}
+                            label="Sementasyon Durumu"
+                            onChange={handleChange}
+                        >
+                            {ProcessTransitions[ sementasyonState ]?.map(key => (
+                                <MenuItem key={key} value={key}>
+                                    {key}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                    <FormControl fullWidth margin="normal">
+                        <InputLabel>Kaplama Durumu</InputLabel>
+                        <Select
+                            name="kaplamaState"
+                            value={formData.kaplamaState}
+                            label="Kaplama Durumu"
+                            onChange={handleChange}
+                        >
+                            {ProcessTransitions[ kaplamaState ]?.map(key => (
+                                <MenuItem key={key} value={key}>
+                                    {key}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                    <FormControl fullWidth margin="normal">
+                        <InputLabel>Ambalaj Durumu</InputLabel>
+                        <Select
+                            name="ambalajState"
+                            value={formData.ambalajState}
+                            label="Ambalaj Durumu"
+                            onChange={handleChange}
+                        >
+                            {ProcessTransitions[ ambalajState ]?.map(key => (
+                                <MenuItem key={key} value={key}>
+                                    {key}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </Box>
                 <Box sx={{ mt: 2 }}>
                     {!readonly && (
                         <Button variant="contained" color="primary" type="submit">

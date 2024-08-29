@@ -10,4 +10,6 @@ urlpatterns = [
    path('reset-password-request/', ResetPasswordRequestView.as_view(), name='auth_reset_password_request'),
    path('reset-password/', ResetPasswordView.as_view(), name='auth_reset_password'),
    path('google/login/', GoogleLoginView.as_view(), name='auth_google_login'),
+   path('users/', UserListCreateView.as_view(), name='user-list-create'),
+   path('users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
 ]

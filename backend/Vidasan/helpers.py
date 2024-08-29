@@ -1,89 +1,73 @@
-import os
 from django.conf import settings
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfbase.pdfmetrics import registerFont
-from reportlab.lib.colors import red
+from datetime import datetime
+import openpyxl
+import re
+import os
+import pandas as pd
 from io import BytesIO
 from django.http import HttpResponse
 
-# Register the Arial font
-registerFont(TTFont('Arial', 'ARIAL.ttf'))
-
 def createWorkOrder(siparis, user):
-    # Create a BytesIO buffer to receive the PDF
-    buffer = BytesIO()
+    data = {
+        'definition': siparis.definition,
+        'description': siparis.description,
+        'amount': siparis.amount,
+        'currentDate': datetime.now().strftime('%d.%m.%Y'),
+        'isOEM': 'Evet' if siparis.isOEM else 'Hayır',
+        'material': siparis.material,
+        'materialNumber': siparis.materialNumber,
+        'lotNo': siparis.orderNumber,
+        'company': siparis.company,
+    }
 
-    # Create a canvas object and set the page size
-    c = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter
+    for proc in [ 'press', 'byck', 'ovalama', 'sementasyon', 'kaplama', 'ambalaj' ]:
+        machineNumber = getattr( siparis.activity, f'{proc}Machine' )
+        machineNumber = machineNumber.name if machineNumber else ''
+        data[ f'{proc}MachineNumber' ] = machineNumber
 
-    # Define margins
-    margin = 50
-    content_width = width - 2 * margin
+        amount = getattr( siparis.activity, f'{proc}Amount' ) or ''
+        data[ f'{proc}Amount' ] = amount
 
-    # Absolute path to the logo image
-    logo_path = os.path.join(settings.BASE_DIR, 'static', 'Vidasan', 'logo.png')
+        outputKg = getattr( siparis.activity, f'{proc}OutputKg' ) or ''
+        data[ f'{proc}OutputKg' ] = outputKg
 
-    # Draw the logo at the top right corner
-    logo_width = 150  # Adjust width as needed
-    logo_height = 150  # Adjust height as needed
-    if os.path.exists(logo_path):
-        c.drawImage(logo_path, width - margin - logo_width, height - logo_height * 4 / 5, width=logo_width, height=logo_height, preserveAspectRatio=True)
-    else:
-        print(f"Logo file not found: {logo_path}")
+        wastageKg = getattr( siparis.activity, f'{proc}WastageKg' ) or ''
+        data[ f'{proc}WastageKg' ] = wastageKg
 
-    # Draw a title
-    c.setFont("Arial", 16)
-    c.drawString(margin, height - margin, "İş Emri")
+        startDateTime = getattr( siparis.activity, f'{proc}StartDateTime' )
+        startDate = startDateTime.strftime('%d.%m.%Y') if startDateTime else ''
+        startTime = startDateTime.strftime('%H:%M') if startDateTime else ''
+        data[ f'{proc}StartDate' ] = startDate
+        data[ f'{proc}StartTime' ] = startTime
 
-    # Draw rectangles and text for each section
-    def draw_section(y, title, content, font_size=12, box_height=35):
-        content = str(content)
-        c.setFont("Arial", font_size)
+        finishDateTime = getattr( siparis.activity, f'{proc}FinishDateTime' )
+        finishDate = finishDateTime.strftime('%d.%m.%Y') if finishDateTime else ''
+        finishTime = finishDateTime.strftime('%H:%M') if finishDateTime else ''
+        data[ f'{proc}FinishDate' ] = finishDate
+        data[ f'{proc}FinishTime' ] = finishTime
 
-        # Draw the rectangle
-        c.rect(margin, y - box_height, content_width, box_height, stroke=1, fill=0)
+    formPath = os.path.join(settings.BASE_DIR, 'static', 'Vidasan', 'isEmriFormu.xlsx')
+    workbook = openpyxl.load_workbook(formPath)
+    sheet = workbook.active
 
-        # Set title color to red
-        c.setFillColor(red)
-        c.drawString(margin + 5, y - 12, title)
+    # Define a regex pattern to find placeholders
+    pattern = re.compile(r'\{\{(\w+)\}\}')
 
-        # Reset fill color for content
-        c.setFillColor("black")
-        c.drawString(margin + 5, y - 30, content)
+    # Iterate over the cells and replace placeholders
+    for row in sheet.iter_rows():
+        for cell in row:
+            if cell.value and isinstance(cell.value, str):
+                # Find all placeholders in the cell value
+                matches = pattern.findall(cell.value)
+                for match in matches:
+                    # Get the replacement value from the dictionary or use empty string if not found
+                    replacement = str( data.get(match, '') )
+                    # Replace the placeholder with the corresponding value
+                    cell.value = pattern.sub(lambda m: replacement if m.group(1) == match else m.group(0), cell.value)
+    
+    # Save the modified Excel to a BytesIO object
+    excel_buffer = BytesIO()
+    workbook.save(excel_buffer)
+    excel_buffer.seek(0)
 
-        return y - box_height - 10
-
-    # Draw work order details
-    y = height - margin - 40
-    y = draw_section(y, "İş Tanımı", siparis.definition)
-    y = draw_section(y, "Açıklama", siparis.description, box_height=120)  # Larger area for long descriptions
-    y = draw_section(y, "Adet", siparis.amount)
-    y = draw_section(y, "Termin Tarihi", siparis.deadline if siparis.deadline else 'N/A')
-    y = draw_section(y, "Otomotiv Mi?", 'Evet' if siparis.isOEM else 'Hayır')
-    y = draw_section(y, "Sipariş Numarası", siparis.orderNumber if siparis.orderNumber else 'N/A')
-    y = draw_section(y, "Durum", siparis.state)
-    y = draw_section(y, "Isil Islem:", siparis.isilIslem.name if siparis.isilIslem else 'N/A')
-    y = draw_section(y, "Kaplama:", siparis.kaplama.name if siparis.kaplama else 'N/A')
-    y = draw_section(y, "Patch:", siparis.patch.name if siparis.patch else 'N/A')
-
-    # Draw user information
-    c.setFont("Arial", 12)
-    c.drawString(margin, y - 20, f"Emri Veren: {user.name}")
-
-    # Draw signature section
-    c.setFont("Arial", 12)
-    c.drawString(margin, y - 60, "Signature:")
-    c.line(margin, y - 70, margin + 200, y - 70)  # Draw a line for the signature
-
-    # Finish up the PDF
-    c.showPage()
-    c.save()
-
-    # Get the value of the BytesIO buffer and close it
-    pdf = buffer.getvalue()
-    buffer.close()
-
-    return pdf
+    return excel_buffer

@@ -12,6 +12,13 @@ from .helpers import get_random_string, IsUserVerified
 import requests
 from allauth.account.adapter import get_adapter
 from django.shortcuts import get_object_or_404
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
+from .models import User, UserType
+from .serializers import UserSerializerPublic
+from .helpers import IsUserVerified
+from LoggingApp import logger
 
 User = get_user_model()
 
@@ -145,3 +152,80 @@ class ResetPasswordView(generics.CreateAPIView):
       user.save()
       
       return Response(UserSerializer( user ).data, status=status.HTTP_200_OK)
+
+class UserListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsUserVerified]
+
+    def get_serializer_class(self):
+        user_type = self.request.user.user_type
+        logger.debug(f'User {self.request.user} is requesting serializer for User, user type: {user_type}')
+        if user_type in [UserType.ADMIN, UserType.PLANLAMA]:
+            return UserSerializer
+        else:
+            return UserSerializerPublic
+
+    def get_queryset(self):
+        if self.get_serializer_class() == UserSerializerPublic:
+            return User.objects.filter(email=self.request.user.email).all()
+        else:
+            return User.objects.filter(is_superuser=False)
+
+    def list(self, request, *args, **kwargs):
+        logger.info(f'User {self.request.user} is listing User objects')
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, *args, **kwargs):
+        if self.get_serializer_class() == UserSerializerPublic:
+            logger.critical(f'{self.request.user} tried to create User without permission')
+            raise PermissionDenied("You do not have permission to create this object.")
+
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            logger.info(f'User {self.request.user} created a new User: ID={serializer.data["id"]}, Email={serializer.data["email"]}')
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        logger.error(f'Failed to create User, errors: {serializer.errors}')
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsUserVerified]
+
+    def get_serializer_class(self):
+        user_type = self.request.user.user_type
+        logger.debug(f'User {self.request.user} is requesting serializer for User, user type: {user_type}')
+        if user_type in [UserType.ADMIN, UserType.PLANLAMA]:
+            return UserSerializer
+        else:
+            return UserSerializerPublic
+
+    def get_queryset(self):
+        if self.get_serializer_class() == UserSerializerPublic:
+            return User.objects.filter(email=self.request.user.email)
+        else:
+            return User.objects.filter(is_superuser=False)
+
+    def get(self, request, *args, **kwargs):
+        logger.info(f'User {self.request.user} is retrieving User object with ID={kwargs.get("pk")}')
+        return self.retrieve(request, *args, **kwargs)
+
+    def put(self, request, *args, **kwargs):
+        user = self.get_object()
+        if self.get_serializer_class() == UserSerializerPublic:
+            logger.critical(f'{self.request.user} tried to update User without permission: ID={user.id}, Email={user.email}')
+            raise PermissionDenied("You do not have permission to update this object.")
+
+        logger.info(f'User {self.request.user} is updating User: ID={user.id}, Email={user.email}')
+        return self.update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        user = self.get_object()
+        if self.get_serializer_class() == UserSerializerPublic:
+            logger.critical(f'{self.request.user} tried to delete User without permission: ID={user.id}, Email={user.email}')
+            raise PermissionDenied("You do not have permission to delete this object.")
+
+        logger.info(f'User {self.request.user} is deleting User: ID={user.id}, Email={user.email}')
+        return self.destroy(request, *args, **kwargs)

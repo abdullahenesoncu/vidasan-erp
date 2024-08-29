@@ -67,6 +67,13 @@ class UserSerializer(serializers.Serializer):
    class Meta:
       model = User
       fields = ('id', 'email', 'name', 'password', 'user_verified', 'token', 'user_type')
+      write_only_fields = ['password']
+
+class UserSerializerPublic(serializers.ModelSerializer):
+   class Meta:
+      model = User
+      fields = ( 'id', 'email', 'name' )
+      read_only_fields = fields
 
 class ResetPasswordRequestSerializer(serializers.Serializer):
    email = serializers.EmailField(required=True)

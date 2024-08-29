@@ -1,68 +1,73 @@
 import React, { useState, useEffect } from 'react';
 import {
     Container, Typography, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
-    Checkbox, IconButton, Paper, Box, Pagination, Stack, Button
+    Checkbox, IconButton, Paper, Box, Pagination, Stack, Button,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem
 } from '@mui/material';
-import { listSiparis, deleteSiparis, downloadWorkOrderExcel } from '../actions/siparis';
+import { listSiparis, deleteSiparis, downloadWorkOrderExcel, updateSiparis } from '../actions/siparis';
 import { ArrowUpward, ArrowDownward, Add, Edit, Download } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { ProcessState, ProcessTransitions, SiparisState } from '../constants';
 
-const SiparisListPage = () => {
+const SiparisListPage = ({process, onlyUpcomingOrders=false, onlyCompletedOrders=false}) => {
     const [siparisList, setSiparisList] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedSiparisler, setSelectedSiparisler] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
     const [pageCount, setPageCount] = useState(0);
-    const [sortField, setSortField] = useState('definition'); // Default sort field
-    const [sortOrder, setSortOrder] = useState('asc'); // Default sort order
-    const navigate = useNavigate(); // Initialize navigate
+    const [sortField, setSortField] = useState('orderDate');
+    const [sortOrder, setSortOrder] = useState('desc');
+    const [colors, setColors] = useState( [] );
+    const navigate = useNavigate();
 
-    // Fetch data on initial load and when pagination, filters, or sort order change
     useEffect(() => {
         fetchSiparisList();
-    }, [currentPage, searchTerm, sortField, sortOrder]);
+    }, [currentPage, searchTerm, sortField, sortOrder, process, onlyUpcomingOrders, onlyCompletedOrders]);
 
-    const fetchSiparisList = async () => {
-        try {
-            const response = await listSiparis(); // Fetch Siparis data from API
-            const filteredData = filterSiparis(response.data);
-            const sortedData = sortSiparis(filteredData);
-            setPageCount(Math.ceil(sortedData.length / itemsPerPage));
-            setSiparisList(sortedData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage));
-        } catch (error) {
-            console.error('Error fetching siparis data:', error);
+    useEffect(() => {
+        setCurrentPage(1); // Reset to page 1 when search term changes
+    }, [searchTerm]);
+
+    useEffect(() => {
+        if ( process ) {
+            const processStateName = process + 'State';
+            setColors(
+                siparisList.map( siparis => {
+                    if ( siparis[ processStateName ] == ProcessState.BASLAMADI ) return '#d1cfc8';
+                    else if ( siparis[ processStateName ] == ProcessState.CALISIYOR ) return '#6FC276';
+                    else if ( siparis[ processStateName ] == ProcessState.BEKLEMEDE ) return '#f4f186';
+                    else if ( siparis[ processStateName ] == ProcessState.BITTI ) return '#f47174';
+                } ) );
         }
-    };
+        else {
+            setColors(
+                siparisList.map( siparis => {
+                    if ( siparis.state == SiparisState.PLANLAMA ) return '#d1cfc8';
+                    else if ( siparis.state == SiparisState.IMALAT ) return '#f4f186';
+                    else if ( siparis.state == SiparisState.SIPARIS_TAMAMLANDI ) return '#f47174';
+                } ) );
+        }
+    }, [siparisList, process]);
 
-    // Filter data by search term
-    const filterSiparis = (siparisData) => {
-        return siparisData.filter((siparis) => {
-            const matchesSearch = siparis.definition.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                  siparis.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                  siparis.kaplama?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const fetchSiparisList = () => {
+        listSiparis( currentPage, searchTerm, sortField, sortOrder, onlyUpcomingOrders, onlyCompletedOrders )
+            .then( resp => {
+                setPageCount(Math.ceil(resp.data.count / itemsPerPage));
+                setSiparisList(resp.data.results);
+            } )
+            .catch( (error) => {
+                console.error('Error fetching siparis data:', error);
+            } );
+    }
 
-            return matchesSearch;
-        });
-    };
-
-    // Sort data by selected field and order
-    const sortSiparis = (siparisData) => {
-        return siparisData.sort((a, b) => {
-            if (sortOrder === 'asc') {
-                return a[sortField] > b[sortField] ? 1 : -1;
-            } else {
-                return a[sortField] < b[sortField] ? 1 : -1;
-            }
-        });
-    };
-
-    // Handle pagination change
     const handlePageChange = (event, value) => {
         setCurrentPage(value);
     };
 
-    // Handle selecting/deselecting a Siparis item
     const handleSelect = (id) => {
         setSelectedSiparisler((prevSelected) => 
             prevSelected.includes(id) 
@@ -71,7 +76,6 @@ const SiparisListPage = () => {
         );
     };
 
-    // Handle bulk deletion of selected Siparis items
     const handleDeleteSelected = async () => {
         if (!window.confirm(`Do you really want to delete ${selectedSiparisler.length} siparis?`)) return;
         try {
@@ -85,32 +89,35 @@ const SiparisListPage = () => {
         }
     };
 
-    // Handle sorting
     const handleSort = (field) => {
         const isAsc = sortField === field && sortOrder === 'asc';
         setSortField(field);
         setSortOrder(isAsc ? 'desc' : 'asc');
     };
 
-    // Handle row click to navigate to details page
-    const handleRowClick = (id) => {
-        navigate(`/siparis/${id}`);
-    };
-
-    // Handle navigate to create siparis page
     const handleCreateSiparis = () => {
         navigate('/siparis/create');
     };
 
-    // Handle navigate to update siparis page
     const handleUpdateSiparis = (id) => {
         navigate(`/siparis/${id}`);
     };
 
-    // Handle download work order PDF
     const handleDownload = (id) => {
         downloadWorkOrderExcel(id);
     };
+
+    const handleProcessStateChange = ( siparis, newState ) => {
+        siparis[ process + 'State' ] = newState;
+        updateSiparis( siparis.id, siparis )
+            .then( () => fetchSiparisList() )
+            .catch( () => console.log( "An error occured when updating siparis process state" ) );
+    }
+
+    function capitalizeFirstChar(str) {
+        if (!str) return str;  // Return if the string is empty or undefined
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
 
     return (
         <Container>
@@ -145,7 +152,7 @@ const SiparisListPage = () => {
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>Select</TableCell>
+                            <TableCell>Seç</TableCell>
                             <TableCell>
                                 <Box display="flex" alignItems="center">
                                     Tanım
@@ -175,9 +182,9 @@ const SiparisListPage = () => {
                             </TableCell>
                             <TableCell>
                                 <Box display="flex" alignItems="center">
-                                    Oluşturulma Zamanı
-                                    <IconButton onClick={() => handleSort('created_at')}>
-                                        {sortField === 'created_at' && sortOrder === 'asc' ? 
+                                    Sipariş Tarihi
+                                    <IconButton onClick={() => handleSort('orderDate')}>
+                                        {sortField === 'orderDate' && sortOrder === 'asc' ? 
                                             <ArrowUpward /> : <ArrowDownward />}
                                     </IconButton>
                                 </Box>
@@ -192,11 +199,14 @@ const SiparisListPage = () => {
                                 </Box>
                             </TableCell>
                             <TableCell>Aksiyonlar</TableCell>
+                            {process && (
+                                <TableCell>{capitalizeFirstChar(process)} Durumu</TableCell> 
+                            )}
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {siparisList.map((siparis) => (
-                            <TableRow key={siparis.id} hover>
+                        {siparisList.map((siparis, index) => (
+                            <TableRow key={siparis.id} sx={{ backgroundColor: colors[index] }}>
                                 <TableCell>
                                     <Checkbox
                                         checked={selectedSiparisler.includes(siparis.id)}
@@ -206,7 +216,7 @@ const SiparisListPage = () => {
                                 <TableCell>{siparis.definition}</TableCell>
                                 <TableCell>{siparis.description.length > 50 ? `${siparis.description.substring(0, 50)}...` : siparis.description}</TableCell>
                                 <TableCell>{new Date(siparis.deadline).toLocaleDateString()}</TableCell>
-                                <TableCell>{new Date(siparis.created_at).toLocaleDateString()}</TableCell>
+                                <TableCell>{new Date(siparis.orderDate).toLocaleDateString()}</TableCell>
                                 <TableCell>{siparis.state}</TableCell>
                                 <TableCell>
                                     <IconButton color="primary" onClick={(e) => {
@@ -221,6 +231,25 @@ const SiparisListPage = () => {
                                     }}>
                                         <Download />
                                     </IconButton>
+                                </TableCell>
+                                <TableCell>
+                                    {process && (
+                                        <FormControl fullWidth margin="normal">
+                                            <InputLabel>Durum Değiştir</InputLabel>
+                                            <Select
+                                                name="processState"
+                                                value={siparis[ process + 'State' ]}
+                                                label="processState"
+                                                onChange={(e) => handleProcessStateChange( siparis, e.target.value )}
+                                            >
+                                                {ProcessTransitions[ siparis[ process + 'State' ] ]?.map(key => (
+                                                    <MenuItem key={key} value={key}>
+                                                        {key}
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    )}
                                 </TableCell>
                             </TableRow>
                         ))}

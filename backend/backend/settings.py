@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'corsheaders',
+    "django_filters",
     'LoggingApp',
     "Authentication",
     "Vidasan",
@@ -120,7 +121,9 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': (
         'Authentication.helpers.IsUserVerified',
-   ),
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
 }
 
 AUTHENTICATION_BACKENDS = (
@@ -134,7 +137,8 @@ AUTH_USER_MODEL = 'Authentication.User'
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Istanbul"
+USE_TZ = True
 
 USE_I18N = True
 
@@ -169,6 +173,8 @@ EMAIL_USE_SSL = False
 ACCOUNT_ADAPTER = 'Authentication.helpers.CustomAccountAdapter'
 
 SITE_ID = 1
+
+ORDER_NUMBER_STARTING_POINT = 8957
 
 if not LIVE:
     from .testSettings import *

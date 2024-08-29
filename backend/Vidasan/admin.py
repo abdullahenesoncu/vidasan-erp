@@ -18,8 +18,12 @@ class SiparisFileUploadForm(forms.Form):
             for file in files:
                 SiparisFile.objects.create(siparis=siparis, file=file)  # Create a new SiparisFile object for each file
 
+class SiparisActivityInline(admin.StackedInline):
+    model = SiparisActivity
+    extra = 0  # No extra empty fields
+
 class SiparisAdmin(admin.ModelAdmin):
-    inlines = [SiparisFileInline]
+    inlines = [SiparisFileInline, SiparisActivityInline]
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         siparis = self.get_object(request, object_id)
@@ -42,8 +46,7 @@ class SiparisAdmin(admin.ModelAdmin):
         return []
 
 admin.site.register(Machine)
-admin.site.register(IsilIslemType)
-admin.site.register(KaplamaType)
-admin.site.register(PatchType)
 admin.site.register(Siparis, SiparisAdmin)
+admin.site.register(SiparisActivity)
 admin.site.register(SiparisFile)
+admin.site.register(SiparisLog)
