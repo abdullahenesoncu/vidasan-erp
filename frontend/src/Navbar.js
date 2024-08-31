@@ -65,9 +65,12 @@ const Navbar = () => {
                     <Button color="inherit" onClick={() => handleNavigate('/machine')}>
                         Makine
                     </Button>
+                    <Button color="inherit" onClick={() => handleNavigate('/users')}>
+                        Çalışanlar
+                    </Button>
                 </Box>
                 <Button color="inherit" onClick={handleLogout} startIcon={<LogoutIcon />}>
-                    Logout
+                    Çıkış Yap
                 </Button>
             </Toolbar>
         </AppBar>

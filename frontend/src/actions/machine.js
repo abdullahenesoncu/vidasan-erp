@@ -46,3 +46,12 @@ export const deleteMachine = (id) => {
         }
     });
 };
+
+export const fetchMachineLogs = (machineId = null) => {
+    const url = machineId ? `${API_URL}/machine-logs/${machineId}/` : `${API_URL}/machine-logs/`;
+    return axios.get(url, {
+        headers: {
+            'Authorization': `Token ${getToken()}`
+        }
+    });
+};

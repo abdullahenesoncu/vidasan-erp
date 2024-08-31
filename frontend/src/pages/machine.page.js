@@ -159,7 +159,7 @@ const MachinePage = () => {
 
             <Box sx={{ mb: 3 }}>
                 <FormControl sx={styles.formControl}>
-                    <InputLabel>Filter by Type</InputLabel>
+                    <InputLabel>Tipe göre filtrele</InputLabel>
                     <Select
                         name="filterType"
                         value={filterType}
@@ -172,7 +172,7 @@ const MachinePage = () => {
                     </Select>
                 </FormControl>
                 <FormControl sx={styles.formControl} style={{ marginLeft: '20px' }}>
-                    <InputLabel>Filter by Variation</InputLabel>
+                    <InputLabel>Çeşite göre filtrele</InputLabel>
                     <Select
                         name="filterVariation"
                         value={filterVariation}
@@ -220,6 +220,9 @@ const MachinePage = () => {
                                     </Button>
                                     <Button variant="outlined" color="error" onClick={() => handleDelete(machine.id)}>
                                         Sil
+                                    </Button>
+                                    <Button variant="outlined" color="info" onClick={() => navigate( `/machine-logs/${machine.id}` )}>
+                                        Logları Gör
                                     </Button>
                                 </TableCell>
                             </TableRow>

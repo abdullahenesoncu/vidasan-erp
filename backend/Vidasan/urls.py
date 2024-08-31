@@ -12,4 +12,6 @@ urlpatterns = [
     path('work-order/<int:siparis_id>/', CreateWorkOrderView.as_view(), name='create_work_order'),
     path('machines/', MachineListCreateView.as_view(), name='machine-list-create'),
     path('machines/<int:pk>/', MachineDetailView.as_view(), name='machine-detail'),
+    path('machine-logs/', MachineLogsList.as_view(), name='machine-logs-list-all'),
+    path('machine-logs/<int:machine_id>/', MachineLogsList.as_view(), name='machine-logs-list'),
 ]

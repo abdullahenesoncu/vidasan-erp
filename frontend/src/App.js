@@ -8,6 +8,8 @@ import LoginPage from './pages/login.page';
 import { UserType } from './constants';
 import Navbar from './Navbar'; // Import the Navbar component
 import MachinePage from './pages/machine.page';
+import UserListPage from './pages/users.page';
+import MachineLogsTimeline from './pages/machine.logs';
 
 // Helper function to get the token and user type from localStorage
 const getToken = () => localStorage.getItem('token');
@@ -125,6 +127,26 @@ const App = () => {
                         <PrivateRoute 
                             allowedRoles={[UserType.ADMIN, UserType.PLANLAMA]} 
                             element={<MachinePage />}
+                        />
+                    } 
+                />
+
+                <Route 
+                    path="/users" 
+                    element={
+                        <PrivateRoute 
+                            allowedRoles={[UserType.ADMIN]} 
+                            element={<UserListPage />}
+                        />
+                    } 
+                />
+
+                <Route 
+                    path="/machine-logs/:machineId"
+                    element={
+                        <PrivateRoute
+                            allowedRoles={[UserType.ADMIN, UserType.PLANLAMA, UserType.KALITE_KONTROL]} 
+                            element={<MachineLogsTimeline />}
                         />
                     } 
                 />

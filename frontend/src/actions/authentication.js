@@ -52,3 +52,26 @@ export const resetPasswordRequest = (email) => {
 export const resetPassword = (resetData) => {
     return axios.post(`${API_URL}/reset-password/`, resetData);
 };
+
+
+// Fetch Users
+export const fetchUsers = () => {
+    return axios.get(`${API_URL}/users/`, {
+        headers: {
+            'Authorization': `Token ${getToken()}`
+        }
+    });
+};
+
+// Update User
+export const updateUser = (userId, updatedData) => {
+    return axios.patch(
+        `${API_URL}/users/${userId}/`, 
+        updatedData, 
+        {
+            headers: {
+                'Authorization': `Token ${getToken()}`
+            }
+        }
+    );
+};

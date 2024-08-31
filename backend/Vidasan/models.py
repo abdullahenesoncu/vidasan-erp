@@ -54,6 +54,14 @@ class ProcessState( Enum ):
     BITTI = 'Bitti'
     HACKY = 'Hacky'
 
+class ProcessTypes( Enum ):
+    PRESS = 'press'
+    BYCK = 'byck'
+    OVALAMA = 'ovalama'
+    SEMENTASYON = 'sementasyon'
+    KAPLAMA = 'kaplama'
+    AMBALAJ = 'ambalaj'
+
 class Machine( BaseModel ):
     name = models.CharField( max_length=300, blank=True, null=True )
     type = models.CharField( max_length=100, choices=MachineType.get_choices() )
@@ -111,7 +119,7 @@ class Siparis( BaseModel ):
                     self.orderNumber = max_number + 1
         else:
             oldInstance = Siparis.objects.get( pk=self.pk )
-            for process in [ "press", "byck", "ovalama", "sementasyon", "kaplama", "ambalaj" ]:
+            for process, _ in ProcessTypes.get_choices():
                 oldState = getattr( oldInstance, f"{process}State" )
                 newState = getattr( self, f"{process}State" )
                 if oldState != newState:
@@ -119,9 +127,8 @@ class Siparis( BaseModel ):
                         raise Exception( f"{process} cannot go from {oldState} to {newState}" )
                     if hasattr( self, 'activity' ):
                         machine = getattr( self.activity, f'{process}Machine' )
-                        SiparisLog.objects.create( siparis=self, machine=machine, fromState=oldState, toState=newState )
+                        SiparisLog.objects.create( siparis=self, machine=machine, fromState=oldState, toState=newState, processType=process )
                     
-
         super().save(*args, **kwargs)
 
         if not getattr( self, 'activity', None ):
@@ -186,6 +193,13 @@ class SiparisActivity( BaseModel ):
 
     def __str__( self ):
         return self.siparis.definition
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        for process, _ in ProcessTypes.get_choices():
+            machine = getattr( self, f'{process}Machine', None )
+            if machine:
+                SiparisLog.objects.filter( siparis=self.siparis, processType=process ).update( machine=machine )
 
 class SiparisFile( BaseModel ):
     siparis = models.ForeignKey( Siparis, on_delete=models.CASCADE, related_name='files' )
@@ -197,3 +211,4 @@ class SiparisLog( BaseModel ):
     machine = models.ForeignKey( Machine, on_delete=models.SET_NULL, null=True, blank=True )
     fromState = models.CharField( max_length=100, choices=ProcessState.get_choices(), default=ProcessState.HACKY )
     toState = models.CharField( max_length=100, choices=ProcessState.get_choices(), default=ProcessState.HACKY )
+    processType = models.CharField( max_length=100, choices=ProcessTypes.get_choices(), default=ProcessTypes.PRESS )

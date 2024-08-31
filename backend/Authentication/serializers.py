@@ -55,7 +55,7 @@ class LoginSerializer(serializers.Serializer):
       model = User
       fields = ('email', 'password')
 
-class UserSerializer(serializers.Serializer):
+class UserSerializer(serializers.ModelSerializer):
    id = serializers.IntegerField()
    name = serializers.CharField()
    email = serializers.EmailField()
@@ -66,7 +66,7 @@ class UserSerializer(serializers.Serializer):
    
    class Meta:
       model = User
-      fields = ('id', 'email', 'name', 'password', 'user_verified', 'token', 'user_type')
+      fields = ('id', 'email', 'name', 'password', 'user_verified', 'token', 'user_type', 'is_active')
       write_only_fields = ['password']
 
 class UserSerializerPublic(serializers.ModelSerializer):

@@ -13,6 +13,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter, SearchFilter
 from django.utils import timezone
 from datetime import timedelta
+from rest_framework.views import APIView
 
 from LoggingApp import logger
 
@@ -356,3 +357,37 @@ class MachineDetailView(generics.RetrieveUpdateDestroyAPIView):
 
         logger.info(f'User {self.request.user} is deleting Machine: ID={machine.id}, Name={machine.name}')
         return self.destroy(request, *args, **kwargs)
+    
+class MachineLogsList(APIView):
+
+    def get(self, request, machine_id=None, *args, **kwargs):
+        if machine_id:
+            logs = SiparisLog.objects.filter(machine__id=machine_id).order_by( 'created_at' )
+        else:
+            logs = SiparisLog.objects.all().order_by('created_at')
+        
+        logDict = {}
+        machineIdToName = {}
+        for log in logs:
+            if not log.machine:
+                continue
+            machineId, machineName = log.machine.id, log.machine.name
+            machineIdToName[ machine_id ] = machineName
+            if machineId not in logDict:
+                logDict[ machineId ] = []
+            if log.toState == ProcessState.HACKY:
+                continue
+            logDict[ machineId ].append(
+                {
+                    'state': log.toState,
+                    'process': log.processType,
+                    'created_at': log.created_at,
+                }
+            )
+        
+        data = {
+            'logs': logDict,
+            'machineIdToName': machineIdToName,
+        }
+        
+        return Response(data)
